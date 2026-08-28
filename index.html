@@ -309,6 +309,13 @@
             backdrop-filter: blur(4px);
         }
 
+        .controls-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
         .players-info {
             display: flex;
             gap: 40px;
@@ -396,6 +403,29 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }
+
+        /* === КНОПКА "НАЧАТЬ СНАЧАЛА" === */
+        #restart-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: #cfd8e6;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+        }
+
+        #restart-btn:hover {
+            background: rgba(239, 83, 80, 0.15);
+            border-color: #ef5350;
+            color: #fff;
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(239, 83, 80, 0.1);
         }
 
         /* === МОДАЛЬНОЕ ОКНО (ВОПРОСЫ) === */
@@ -633,11 +663,13 @@
             .options-grid { grid-template-columns: 1fr; }
             .modal-box { padding: 24px; }
             .controls { flex-direction: column; align-items: stretch; }
+            .controls-left { flex-direction: column; align-items: center; }
             .dice-area { justify-content: center; }
             .players-info { justify-content: center; gap: 20px; font-size: 16px; }
             .diff-btn { padding: 14px 24px; font-size: 18px; min-width: 120px; }
             #gameover-overlay .modal-box { padding: 30px 20px; }
             #gameover-overlay .modal-box h2 { font-size: 28px; }
+            #restart-btn { font-size: 14px; padding: 10px 18px; }
         }
     </style>
 </head>
@@ -682,9 +714,12 @@
         </div>
 
         <div class="controls">
-            <div class="players-info">
-                <div class="you">🧑‍⚕️ Вы: <span id="player-pos">1</span>/<span id="total-cells-display">30</span></div>
-                <div class="bot">🤖 Бот: <span id="bot-pos">1</span>/30</div>
+            <div class="controls-left">
+                <div class="players-info">
+                    <div class="you">🧑‍⚕️ Вы: <span id="player-pos">1</span>/<span id="total-cells-display">30</span></div>
+                    <div class="bot">🤖 Бот: <span id="bot-pos">1</span>/30</div>
+                </div>
+                <button id="restart-btn">🔄 Начать сначала</button>
             </div>
             <div class="dice-area">
                 <span id="dice-result">⚀</span>
@@ -974,7 +1009,7 @@
         { q: 'Состояние, при котором эпилептические припадки непрерывно продолжаются без восстановления функций, называется:', opts: ['Серийные припадки', 'Эпилептический статус', 'Фармакорезистентная эпилепсия', 'Эпилептическая энцефалопатия'], ans: 1 }
     ];
 
-    // === 60 СЛОЖНЫХ ВОПРОСОВ (без подсказок) ===
+    // === 60 СЛОЖНЫХ ВОПРОСОВ ===
     const QUESTIONS_HARD = [
         { q: 'Назовите патологический разгибательный стопный рефлекс, вызывающийся сдавлением ахиллова сухожилия:', opts: ['Рефлекс Оппенгейма', 'Рефлекс Гроссмана', 'Рефлекс Шеффера', 'Рефлекс Пуссёпа'], ans: 2 },
         { q: 'Назовите общее количество черепных и спинномозговых нервов в теле человека:', opts: ['12 + 31 = 43', '(12×2) + (31×2) = 86', '12 + (31×2) = 74', '(12×2) + 31 = 55'], ans: 1 },
@@ -1084,6 +1119,7 @@
     const qText = document.getElementById('q-text');
     const optionBtns = document.querySelectorAll('.option-btn');
     const toast = document.getElementById('toast');
+    const restartBtn = document.getElementById('restart-btn');
     let toastTimeout = null;
 
     // Загрузка изображения мозга
@@ -1342,6 +1378,36 @@
     }
 
     // ============================================================
+    //  ФУНКЦИЯ ПЕРЕЗАПУСКА
+    // ============================================================
+    function resetToMenu() {
+        // Закрываем все модальные окна
+        modalOverlay.style.display = 'none';
+        gameoverOverlay.style.display = 'none';
+        
+        // Сбрасываем игровое состояние
+        gameActive = false;
+        isWaitingForAnswer = false;
+        isBotThinking = false;
+        rollBtn.disabled = true;
+        
+        // Сбрасываем позиции игроков и счёт
+        players[0].pos = 0;
+        players[1].pos = 0;
+        correctCount = 0;
+        wrongCount = 0;
+        usedQuestions = [];
+        
+        // Показываем экран выбора уровня
+        gameBoard.style.display = 'none';
+        difficultyScreen.style.display = 'flex';
+        
+        // Обновляем отображение
+        drawTrack();
+        showToast('🔄 Возврат в главное меню. Выбери уровень!', 'info', 2500);
+    }
+
+    // ============================================================
     //  ЛОГИКА ИГРЫ
     // ============================================================
     function showGameOver(winnerName) {
@@ -1506,14 +1572,13 @@
     });
 
     // ============================================================
-    //  ИГРАТЬ СНОВА
+    //  КНОПКИ УПРАВЛЕНИЯ
     // ============================================================
-    document.getElementById('play-again-btn').addEventListener('click', () => {
-        gameoverOverlay.style.display = 'none';
-        gameBoard.style.display = 'none';
-        difficultyScreen.style.display = 'flex';
-        showToast('🔄 Выбери уровень для новой игры!', 'info', 2500);
-    });
+    // Кнопка "Начать сначала"
+    restartBtn.addEventListener('click', resetToMenu);
+
+    // Кнопка "Играть снова" в окне завершения
+    document.getElementById('play-again-btn').addEventListener('click', resetToMenu);
 
     // ============================================================
     //  УПРАВЛЕНИЕ БРОСКОМ
